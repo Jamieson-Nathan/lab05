@@ -1,13 +1,16 @@
 ---
-title: "Lab 05 - La Quinta is Spanish for next to Denny's, Pt. 2"
-author: "Insert your name here"
-date: "Insert date here"
+title: "Lab 05 - Part 2"
+author: "Jamieson Nathan"
+date: "2/21/25"
 output: github_document
 ---
 
 ### Load packages and data
 
 ```{r load-packages, message = FALSE}
+
+devtools::install_github("rstudio-education/dsbox")
+
 library(tidyverse) 
 library(dsbox) 
 ```
@@ -16,34 +19,288 @@ library(dsbox)
 states <- read_csv("data/states.csv")
 ```
 
-### Exercise 1
+### 1 Filter the Denny’s data frame for Alaska (AK) and save the result as dn_ak. How many Denny’s locations are there in Alaska?
 
-Remove this text, and add your answer for Exercise 1 here.
-Add code chunks as needed.
-Don't forget to label your code chunk.
-Do not use spaces in code chunk labels.
+```{r filter}
+dennys_ak <- dennys %>%
+  filter(state == "AK")
+nrow(dennys_ak)
 
-### Exercise 2
+laquinta_ak <- laquinta %>%
+  filter(state == "AK")
+nrow(laquinta_ak)
 
-Remove this text, and add your answer for Exercise 1 here.
-Add code chunks as needed.
-Don't forget to label your code chunk.
-Do not use spaces in code chunk labels.
+```
+There are 3 Denny's and 2 Laquinta's in Alaska. 
 
-### Exercise 3
+### 2 Next we will be calculating the distance between all Denny’s and all La Quinta locations in Alaska.
 
-...
+```{r pairings}
+comb <- nrow(laquinta_ak) * nrow(dennys_ak)
+```
 
-### Exercise 4
+There are 6 combinations. 
 
-...
 
-### Exercise 5
+### 3 In order to calculate these distances, we need to first restructure our data to pair the Denny’s and La Quinta locations. To do so, we will join the two data frames. We have six join options in R.
 
-...
+```{r dataframe}
 
-### Exercise 6
 
-...
+dn_lq_ak <- full_join(dennys_ak, laquinta_ak, 
+                      by = "state")
+view(dn_lq_ak)
 
-Add exercise headings as needed.
+```
+
+### 4 How many observations are in the joined dn_lq_ak data frame? What are the names of the variables in this data frame.
+
+There are 6 rows in the frames representing a combination of dn x lq. There are 6 columns for the respective address and coordinates of each dn and lq, making a table of 6x12. 
+
+### 5 What function from the tidyverse do we use the add a new variable to a data frame while keeping the existing variables?
+
+```{r define_haversine}
+haversine <- function(long1, lat1, long2, lat2, round = 3) {
+  # convert to radians
+  long1 <- long1 * pi / 180
+  lat1 <- lat1 * pi / 180
+  long2 <- long2 * pi / 180
+  lat2 <- lat2 * pi / 180
+
+  R <- 6371 # Earth mean radius in km
+
+  a <- sin((lat2 - lat1) / 2)^2 + cos(lat1) * cos(lat2) * sin((long2 - long1) / 2)^2
+  d <- R * 2 * asin(sqrt(a))
+
+  return(round(d, round)) # distance in km
+}
+```
+
+
+### 6 Calculate the distances between all pairs of Denny’s and La Quinta locations and save this variable as distance. Make sure to save this variable in THE dn_lq_ak data frame, so that you can use it later.
+
+```{r calc_dist}
+dn_lq_ak <- dn_lq_ak %>%
+  mutate(distance = haversine(longitude.x, latitude.x, longitude.y, latitude.y))
+
+view(dn_lq_ak)
+
+```
+
+# 7 Calculate the minimum distance between a Denny’s and La Quinta for each Denny’s location. To do so we group by Denny’s locations and calculate a new variable that stores the information for the minimum distance.
+
+```{r min_dist}
+dn_lq_ak_mindist <- dn_lq_ak %>%
+  group_by(address.x) %>%
+  summarize(closest = min(distance))
+dn_lq_ak_mindist
+```
+
+# 8 Describe the distribution of the distances Denny’s and the nearest La Quinta locations in Alaska. Also include an appropriate visualization and relevant summary statistics.
+
+```{r visualizing}
+
+dn_lq_ak_mindist %>%
+  ggplot(aes(x = address.x, y = closest, fill = address.x)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Shortest Distances Between Dennys & LaQuinta in Alaska",
+    x = "Location of Denny's",
+    y = "Distance to nearest LaQuinta in km"
+  ) +
+  scale_fill_brewer(palette = "Set3", guide = "none") +
+  theme_minimal()
+
+mean(dn_lq_ak_mindist$closest)
+
+```
+
+Yet again the joke rings true, it appears that Denny's and LaQuinta appear to be very closely grouped in Alaska, with and average distance of 4.41km between them. 
+
+# 9 For NC
+
+```{r filter-nc}
+dennys_nc <- dennys %>%
+  filter(state == "NC")
+nrow(dennys_nc)
+
+laquinta_nc <- laquinta %>%
+  filter(state == "NC")
+nrow(laquinta_nc)
+
+```
+There are 28 Denny's and 12 Laquinta's in NC 
+
+```{r pairings-nc}
+comb <- nrow(laquinta_nc) * nrow(dennys_nc)
+```
+There are 336 combinations. 
+
+
+```{r dataframe-nc}
+
+
+dn_lq_nc <- full_join(dennys_nc, laquinta_nc, 
+                      by = "state")
+view(dn_lq_nc)
+
+```
+
+```{r distance-nc}
+dn_lq_nc <- dn_lq_nc %>%
+  mutate(distance = haversine(longitude.x, latitude.x, longitude.y, latitude.y))
+
+view(dn_lq_nc)
+
+```
+
+```{r shortest-nc}
+dn_lq_nc_mindist <- dn_lq_nc %>%
+  group_by(address.x) %>%
+  summarize(closest = min(distance))
+dn_lq_nc_mindist
+```
+
+
+```{r visualizing-nc}
+
+dn_lq_nc_mindist %>%
+  ggplot(aes(x = closest)) +
+  geom_histogram(fill = "gold") +
+  labs(
+   title = "Shortest Distances Between Dennys & LaQuinta in NC",
+   x = "Shortest distance between Dennys and LaQuinta in km",
+   y = "Number of locations with similar distance") +
+  theme_minimal()
+
+mean(dn_lq_nc_mindist$closest)
+
+```
+
+Avg distance is over 60km and much further than Alaska, showing the joke may not hold true in NC. 
+
+
+# 10 For Texas
+
+```{r filter-tx}
+dennys_tx <- dennys %>%
+  filter(state == "TX")
+nrow(dennys_tx)
+
+laquinta_tx <- laquinta %>%
+  filter(state == "TX")
+nrow(laquinta_tx)
+
+```
+```{r pairings-tx}
+comb <- nrow(laquinta_tx) * nrow(dennys_tx)
+```
+
+
+```{r dataframe-tx}
+
+
+dn_lq_tx <- full_join(dennys_tx, laquinta_tx, 
+                      by = "state")
+view(dn_lq_tx)
+
+```
+
+```{r distance-tx}
+dn_lq_tx <- dn_lq_tx %>%
+  mutate(distance = haversine(longitude.x, latitude.x, longitude.y, latitude.y))
+
+view(dn_lq_tx)
+
+```
+
+```{r shortest-tx}
+dn_lq_tx_mindist <- dn_lq_tx %>%
+  group_by(address.x) %>%
+  summarize(closest = min(distance))
+dn_lq_tx_mindist
+```
+
+
+```{r visualizing-tx}
+
+dn_lq_tx_mindist %>%
+  ggplot(aes(x = closest)) +
+  geom_histogram(fill = "darkred") +
+  labs(
+   title = "Shortest Distances Between Dennys & LaQuinta in TX",
+   x = "Shortest distance between Dennys and LaQuinta in km",
+   y = "Number of locations with similar distance") +
+  theme_minimal()
+
+mean(dn_lq_tx_mindist$closest)
+
+```
+
+Wow its like they are right on top of each other, avg distance of 5.8km! Joke holds true here to the extreme. 
+
+#11 For Montana
+
+```{r filter-mt}
+dennys_mt <- dennys %>%
+  filter(state == "MT")
+nrow(dennys_mt)
+
+laquinta_mt <- laquinta %>%
+  filter(state == "MT")
+nrow(laquinta_mt)
+
+```
+```{r pairings-mt}
+comb <- nrow(laquinta_mt) * nrow(dennys_mt)
+```
+
+```{r dataframe-mt}
+
+
+dn_lq_mt <- full_join(dennys_mt, laquinta_mt, 
+                      by = "state")
+view(dn_lq_mt)
+
+```
+
+```{r distance-mt}
+dn_lq_mt <- dn_lq_mt %>%
+  mutate(distance = haversine(longitude.x, latitude.x, longitude.y, latitude.y))
+
+view(dn_lq_mt)
+
+```
+
+```{r shortest-mt}
+dn_lq_mt_mindist <- dn_lq_mt %>%
+  group_by(address.x) %>%
+  summarize(closest = min(distance))
+dn_lq_mt_mindist
+```
+
+
+```{r visualizing-mt}
+
+dn_lq_mt_mindist %>%
+  ggplot(aes(x = address.x, y = closest, fill = address.x)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Shortest Distances Between Dennys & LaQuinta in MT",
+    x = "Location of Denny's",
+    y = "Distance to nearest LaQuinta in km"
+  ) +
+  scale_fill_brewer(palette = "Set1", guide = "none") +
+  theme_minimal()
+
+mean(dn_lq_mt_mindist$closest)
+
+
+```
+
+I tried to beat Texas and did, these are only an avg of 4.8km away from each other. Joke, again, holds true!
+
+#12
+
+Based on my analysis, the joke seems most likely to hold true in Texas, Montana, and Alaska, where the average distances between Denny’s and LaQuinta locations are notably short. While the joke may resonate to varying degrees across different regions, in this analysis, TX, MT, and AK represent the best examples where Mitch Hedberg’s observation rings true. This might reflect a pattern where both establishments are located in key town centers or travel nodes, serving as convenient stops for travelers in otherwise sparsely populated areas. 
+
